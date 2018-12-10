@@ -1,0 +1,259 @@
+---
+title: "Evolution of NFL Offenses"
+author: "Vince Birch"
+output: html_notebook
+---
+
+My final project involves investigating a set of NFL passing data to determine if the NFL has truly become more of a passing game, which quarterbacks and teams have had the most successful seasons and careers, and how this has affected other aspects of the game.  I began by scraping the data and filtering it so only who I deemed significant passers were included for each year, which involved filtering out anyone who had attempted less than 200 passes in a season.
+```{r echo = FALSE, WARNING = FALSE, MESSAGES = FALSE, include = FALSE}
+# clean up workspace environment
+rm(list = ls())
+
+# all packages used for the assignment
+library(mosaic)
+library(DataComputing)
+library(mosaicData)
+library(tidyverse)
+library(party)
+```
+
+```{r warning = FALSE, message = FALSE}
+# I imported the data set here.  It is a CSV file and contains yearly passing stats for all quarterbacks in the NFL.
+CareerPassingYards <- mosaic::read.file("Career_Stats_Passing.csv")
+
+# In the next section, I label all of the rows and columns in the data.
+str(CareerPassingYards)
+CareerPassingYards <- CareerPassingYards[-3]
+colnames(CareerPassingYards)[5] <- "Games_Played"
+colnames(CareerPassingYards)[6] <- "Passing_Attempts"
+colnames(CareerPassingYards)[7] <- "Passing_Completions"
+colnames(CareerPassingYards)[8] <- "Completion_Percentage"
+colnames(CareerPassingYards)[9] <- "Pass_Attempts_per_Game"
+colnames(CareerPassingYards)[10] <- "Passing_Yards"
+colnames(CareerPassingYards)[11] <- "Yards_per_Attempt"
+colnames(CareerPassingYards)[12] <- "Yards_per_Game"
+colnames(CareerPassingYards)[13] <- "Touchdowns"
+colnames(CareerPassingYards)[14] <- "Touchdowns_per_Attempt"
+colnames(CareerPassingYards)[15] <- "Interceptions"
+colnames(CareerPassingYards)[16] <- "Interception_per_Attempt"
+CareerPassingYards <- CareerPassingYards[-17]
+colnames(CareerPassingYards)[17] <- "Plays20"
+CareerPassingYards <- CareerPassingYards [-18]
+colnames(CareerPassingYards)[18] <- "Sacks"
+CareerPassingYards <- CareerPassingYards[-19]
+colnames(CareerPassingYards)[19] <- "Passing_Rating"
+# In the next portion, I edited the code that I needed numeric variables for to numbers. I also took out quarterbacks with under 200 attempts a year.
+PassingYardsEdited <-
+  CareerPassingYards %>%
+  mutate(Passing_Attempts = as.numeric(Passing_Attempts),
+         Passing_Yards = gsub(",","", Passing_Yards),
+         Year = as.numeric(Year),
+         Passing_Yards = as.numeric(Passing_Yards),
+         Touchdowns = as.numeric(Touchdowns)) %>%
+  filter(Passing_Attempts >= 200)
+# Display the data table.
+PassingYardsEdited
+```
+
+In the next portion, I counted the number of quarterbacks who had over 200 attempts a season and how many average passing yards those quarterbacks had.
+```{r warning = FALSE, message = FALSE}
+# In the next portion of the code, I counted the number of quarterbacks had over 200 attempts a year, and what their average passing yards was.
+YearlyLeaguePassingStats <-
+  PassingYardsEdited
+YearlyLeaguePassingStats <-
+  YearlyLeaguePassingStats %>%
+  group_by(Year) %>%
+  summarise(count = n(),
+            AvgPassingYards = sum(Passing_Yards, na.rm = TRUE) / count)
+YearlyLeaguePassingStats
+```
+
+The graph below shows the relationship on the x and y axis between the year and the number of passers with at least 200 passing attempts each year.  The basic pattern makes sense, before 1960 there was a very slow but steady increase in the amount of players attempting more than 200 passes a year, showing the NFL becoming more and more reliant on passing.  However, from 1980 to 1990, there was a flatline of passers in the NFL with more than 200 attempts, which I found very surprising, as the NFL then expanded to a 16 game schedule.  However, since 1990, the pattern began increasing again, and increased even more rapidly since 2000.  It hit the point where all 32 teams had players with 200+ pass attempts in 2011, and has since increased even more, this time including backups.  This rapid increase recently hints the NFL has become even more of a passing league.  The color gradient also shows how many passing yards the quarterbacks with more than 200 attempts usually average.  The color becomes lighter over time, showing that these quarterbacks throwing over 200 attempts are throwing for increasing yardage.  This also shows the NFL has become more and more reliant on the passing game in recent years.
+```{r warning = FALSE, message = FALSE}
+# The next chunk of code creates data that shows the number of quarterbacks with 200 attempts each year along the x and y axis and the color gradient shows their average passing yards each year.
+ggplot(data = YearlyLeaguePassingStats, aes(x = Year, y = count)) + geom_point()  + aes(colour = AvgPassingYards) + theme(legend.position = "right") + labs(title = "Number of Passers with more than 200 Attempts and their Average Passing Yards") + stat_smooth()
+```
+
+
+Then, I wanted to see if any teams were more consistently successful passing over time than others.  I grouped together all the passers by teams, and investigated the results.  This showed that the most successful team passing (in terms of yardage since 1939) was the Green Bay Packers, followed by the San Diego Chargers.  Green Bay made sense, as they've been one of the most consistent NFL franchises of all time.  I found the Chargers extremely interesting, as the Chargers have only been in the NFL since 1970, and though they've been headed by some incredible quarterbacks, such as Dan Fouts, Philip Rivers, and Drew Brees, it surprised me they were good enough to make up for 20 years of not being in the league.
+
+```{r warning = FALSE, message = FALSE}
+# This portion of the code wrangles aspects of the data to make it numeric.
+TeamPassingYardsEditing <-
+  CareerPassingYards %>%
+  mutate(Passing_Attempts = as.numeric(Passing_Attempts),
+         Passing_Yards = gsub(",","", Passing_Yards),
+         Year = as.numeric(Year),
+         Passing_Yards=as.numeric(Passing_Yards),
+         Touchdowns = as.numeric(Touchdowns))
+
+# This portion of the code groups teams together to view their average passing yards and touchdowns over their history.
+TeamsPassingStats <-
+  TeamPassingYardsEditing %>%
+  group_by(Team) %>%
+  summarise(
+            PassingYards = sum(Passing_Yards, na.rm = TRUE),
+            Touchdowns = sum(Touchdowns, na.rm = TRUE)) %>%
+  arrange(desc(PassingYards))
+TeamsPassingStats
+```
+
+Finally, I wanted to investigate if any quarterbacks were consistently better over time than other ones.  I did this by looking for quarterbacks who were in the top 10 in passing yards and touchdowns for each season, and counting the number of season they achieved this mark.
+
+```{r warning = FALSE, message=FALSE}
+# This part of the code filters to find quarterbacks with over 100 attempts a year and made the data I needed editable by making it numeric.
+PlayerStatsEditing <-
+  CareerPassingYards %>%
+  mutate(Passing_Attempts= as.numeric(Passing_Attempts),
+         Passing_Yards = gsub(",","", Passing_Yards),
+         Year = as.numeric(Year),
+         Passing_Yards=as.numeric(Passing_Yards),
+         Touchdowns = as.numeric(Touchdowns)) %>%
+  filter(Passing_Attempts >= 100)
+
+# Out of the starting quarterbacks, I found the mean passing yards and mean touchdowns.
+PlayerStatsEditing <-
+  PlayerStatsEditing %>%
+  group_by(Year) %>%
+    mutate(topmarkyard = mean(Passing_Yards),
+         topmarktouchdown = mean(Touchdowns))
+
+PlayerStatsEditing  
+# Then, I filtered out the quarterbacks who finished over the mean passing yards and touchdowns marks, and counted the times they did this in their career.  Then, I showed the data table.
+TopQBStats <-
+  PlayerStatsEditing %>%
+  filter(Passing_Yards > topmarkyard, Touchdowns > topmarktouchdown) %>%
+  group_by(Name) %>%
+  summarise(count=n()) %>%
+  arrange(desc(count))
+
+TopQBStats
+
+```
+
+Then, I made a graph based on the frequency of quarterback appearances in the top  half of league stats.   This shows there have been a lot of quarterbacks who have only been above an average quarterbacks a few times, and there are very few who have put up top stats for 10+ years, and these are usually all time greats from the graph above, such as Peyton Manning and Dan Marino.
+```{r warning = FALSE, message = FALSE}
+# I made a density chart based on the data above
+ggplot( data = TopQBStats, aes(x = count)) + geom_density(adjust = 0.4) + labs(title = "Frequency of Quarterback Appearances in Top Half of the League")
+```
+
+
+Next, I wanted to determine if offenses were becoming more prevalent overall, or if it was just the passing game.  I investigated similar rushing stats.  Along with this, I used gsub and mutate to change the New York in team names to NY.
+```{r warning = FALSE, message = FALSE}
+# I imported the rushing data and inspected it.
+CareerRushingYards <- mosaic::read.file("Career_Stats_Rushing.csv")
+
+str(CareerRushingYards)
+head(CareerRushingYards)
+
+# I edited the rushing data so it is user friendly.
+CareerRushingYards <- CareerRushingYards[-3]
+colnames(CareerRushingYards)[5] <- "Games_Played"
+colnames(CareerRushingYards)[6] <- "Rushing_Attempts"
+colnames(CareerRushingYards)[7] <- "Attempt_per_Game"
+colnames(CareerRushingYards)[8] <- "Rushing_Yards"
+colnames(CareerRushingYards)[9] <- "Yards_Per_Carry"
+colnames(CareerRushingYards)[10] <- "Yards_Per_Game"
+colnames(CareerRushingYards)[11] <- "Rushing_TDs"
+colnames(CareerRushingYards)[12] <- "Longest_Rush"
+colnames(CareerRushingYards)[13] <- "Rushing_First_Downs"
+CareerPassingYards <- CareerPassingYards[-14]
+colnames(CareerRushingYards)[14] <- "20_more_rushes"
+colnames(CareerRushingYards)[15] <- "20_more_rushes2"
+colnames(CareerRushingYards)[16] <- "Rushing_More_40"
+colnames(CareerRushingYards)[17] <- "Fumbles"
+
+# Then, I edited the rushing data so I could use it and only sorted out backs with over 50 attempts.
+RushingDataTable <-
+  CareerRushingYards %>%
+  mutate(Rushing_Attempts = as.numeric(Rushing_Attempts),
+         Rushing_Yards = gsub(",","", Rushing_Yards),
+         Year = as.numeric(Year),
+         Rushing_Yards = as.numeric(Rushing_Yards),
+         Rushing_TDs = as.numeric(Rushing_TDs)) %>%
+  filter(Rushing_Attempts >= 50)
+
+# Here, I used regular expressions to change New York to NY
+RushingDataTable <-
+  RushingDataTable %>%
+  mutate(Team = gsub("New York", "NY", Team))
+
+# I displayed the data table.
+RushingDataTable
+```
+
+This graph below shows rushing trends currently in the NFL.  The graph shows from 1930 to 1975, there was on average more running backs with rushing attempts over 50.  Then, until about 2000, the trend decreased, and there were fewer running backs with over 50 attempts, but backs were rushing for on average more yards in a season.  Finally, the trend lately has been many more backs to get over 50 carries, but very few of them get many average yards rushing.
+```{r warning = FALSE, message = FALSE}
+# In the following code, I graphed the number of rushers who had over 50 rushing attempts each year.  Then, I found their average rushing yards, and graphed it.
+LeagueRushingStats <-
+  RushingDataTable
+LeagueRushingStats <-
+  LeagueRushingStats %>%
+  group_by(Year) %>%
+  summarise(count=n(),
+            AvgRushingYards = sum(Rushing_Yards, na.rm = TRUE) / count)
+# Displaying the edited data table.
+LeagueRushingStats
+
+# Graphing the data.
+
+ggplot(data = LeagueRushingStats, aes(x = Year, y = count)) + geom_point()  + aes(colour = AvgRushingYards) + theme(legend.position = "right") + labs(title = "Number of Rushers With Over 50 Carries a Year and their Average Rushing Yards") + stat_smooth()
+
+```
+
+I then used machine learning to find out when running backs are most likely to reach 1500 rushing yards, based on  games played, rushing attempts, and rushing touchdowns.  This chart shows that games played contributes very little to it.  Instead, its mainly based around rushing attempts.  If a back runs over 370 attempts in a year, they're 94.7% likely to rush for over 1500 yards.  Next up is if they run over 330, but less than 370, they're 46.8% likely to get over 1500 yards.  This continues on for many points, and the point I thought was most interesting was that if a back rushed for under 306 attempts, but 12 touchdowns, then they still had a 2.5% chance of getting over 1500 yards.  Overall, the chart shows yardage is most linked to rushing attempts, which honestly didn't surprise me at all.
+```{r}
+# I created a machine learning process that made a plotted machine learning for the chance a back would run for over 1500 yards.  I used Rushing_TDs, Games_Played, and Rushing_Attempts as my criteria.
+GoodRB <-
+  party::ctree(Rushing_Yards > 1500 ~
+          Rushing_TDs + Games_Played + Rushing_Attempts, data = RushingDataTable)
+plot(GoodRB, type = "simple")
+```
+
+Finally, I combined the two tables in the next section, so I could see total rushing attempts and passing attempts each year.
+
+```{r warning = FALSE, message = FALSE}
+
+# I created a new data table that contained the number of passing attempts in the NFL each year.
+CombinePassAttempt <-
+  CareerPassingYards %>%
+  group_by(Year) %>%
+  mutate(Passing_Attempts = suppressWarnings(as.numeric(Passing_Attempts))) %>%
+  summarise( YearlyPAttempts = sum(Passing_Attempts, na.rm=TRUE))
+
+# I created a new data table that contained the number of rushing attempts in the NFL each year.
+
+CombineRushAttempt <-
+  CareerRushingYards %>%
+  group_by(Year) %>%
+  mutate(Rushing_Attempts = as.numeric(Rushing_Attempts)) %>%
+  summarise(YearlyRAttempts = sum(Rushing_Attempts, na.rm=TRUE))
+
+# Show both data tables.
+CombinePassAttempt
+CombineRushAttempt
+
+# I then joined the two tables, to show the number of rushing and passing attempts each year, and found a rushing: passing attempt ratio each year.
+Combined_Attempts <-
+CombinePassAttempt %>%
+  left_join(CombineRushAttempt, by=c("Year" = "Year")) %>%
+  mutate(Ratio = YearlyRAttempts/YearlyPAttempts)
+Combined_Attempts
+
+```
+
+The graph below shows the final data conclusion, and it shows that the NFL has become increasingly reliant on the pass since its introduction.  I found this by manipulating the data to find a ratio between the amount of pass attempts and rush attempts each year, and created a ratio, and divided the amount of rushes each year by the amount of passes.  The ratio has steadily lowered each year, showing more of a reliance on the passing game.  I showed this first through a dot plot, and then made it a line graph so one could see how it varies from year to year.
+```{r warning = FALSE, message = FALSE}
+
+# I then graphed the ratio of rushing attempts to passing attempts over time.
+
+ggplot(data = Combined_Attempts, aes(x = Year, y = Ratio)) + geom_point()  + labs(title = "Ratio of Rush Attempts to Pass Attempts Each Year in the NFL")
+
+ggplot(data = Combined_Attempts, aes(x = Year, y = Ratio)) + geom_line()  + labs(title = "Ratio of Rush Attempts to Pass Attempts Each Year in the NFL")
+
+
+
+
+
+
+```
